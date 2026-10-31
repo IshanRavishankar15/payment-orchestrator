@@ -10,6 +10,7 @@ from app.models.durable_job import DurableJob
 from app.models.merchant import Merchant
 from app.models.payment_intent import PaymentIntent
 from app.schemas.payment import PaymentIntentCreate, PaymentState
+from app.services.state_machine import record_initial_state_in_transaction
 
 
 class IdempotencyKeyConflict(Exception):
@@ -90,6 +91,13 @@ def create_payment_intent(
             payment_id = existing.id
         else:
             created = True
+            payment = session.get(PaymentIntent, payment_id)
+            if payment is None:
+                raise RuntimeError("Newly inserted payment could not be loaded")
+            record_initial_state_in_transaction(
+                session,
+                payment,
+            )
             session.add(
                 DurableJob(
                     job_type="PROCESS_PAYMENT",

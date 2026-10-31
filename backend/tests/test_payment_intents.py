@@ -8,6 +8,7 @@ from app.db.session import SessionLocal
 from app.main import app
 from app.models.durable_job import DurableJob
 from app.models.payment_intent import PaymentIntent
+from app.models.state_transition import StateTransition
 
 
 def _new_payload() -> dict[str, object]:
@@ -42,7 +43,15 @@ def test_create_payment_is_idempotent_and_schedules_one_job() -> None:
             .select_from(DurableJob)
             .where(DurableJob.payment_id == uuid.UUID(first_body["id"]))
         )
+        transitions = session.scalars(
+            select(StateTransition).where(
+                StateTransition.payment_id == uuid.UUID(first_body["id"])
+            )
+        ).all()
     assert job_count == 1
+    assert len(transitions) == 1
+    assert transitions[0].from_state is None
+    assert transitions[0].to_state == "CREATED"
 
 
 def test_reusing_idempotency_key_with_different_payload_is_conflict() -> None:
