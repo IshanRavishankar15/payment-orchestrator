@@ -7,6 +7,7 @@ from sqlalchemy import (
     Integer,
     Index,
     String,
+    UniqueConstraint,
     Uuid,
     func,
 )
@@ -17,7 +18,10 @@ from app.db.base import Base
 
 class DurableJob(Base):
     __tablename__ = "durable_jobs"
-    __table_args__ = (Index("ix_durable_jobs_status_available_at", "status", "available_at"),)
+    __table_args__ = (
+        Index("ix_durable_jobs_status_available_at", "status", "available_at"),
+        UniqueConstraint("dedupe_key", name="uq_durable_jobs_dedupe_key"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     job_type: Mapped[str] = mapped_column(String(40), nullable=False)
@@ -27,6 +31,7 @@ class DurableJob(Base):
     attempt_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("payment_attempts.id")
     )
+    dedupe_key: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(
         String(16), default="PENDING", server_default="PENDING", nullable=False
     )
