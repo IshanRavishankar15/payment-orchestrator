@@ -1,0 +1,36 @@
+# Environment secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+*.tsbuildinfo
+.venv/
+venv/
+
+# Frontend
+node_modules/
+.next/
+out/
+dist/
+npm-debug.log*
+
+# Local database and generated artifacts
+*.sqlite
+*.sqlite3
+*.db
+coverage/
+playwright-report/
+test-results/
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
