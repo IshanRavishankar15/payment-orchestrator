@@ -11,6 +11,7 @@ class Settings(BaseSettings):
         "payment_orchestrator"
     )
     simulation_admin_token: str | None = None
+    provider_callback_secret: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

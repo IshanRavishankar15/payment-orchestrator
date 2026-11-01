@@ -10,6 +10,7 @@ from app.models.durable_job import DurableJob
 from app.models.merchant import Merchant
 from app.models.payment_intent import PaymentIntent
 from app.schemas.payment import PaymentIntentCreate, PaymentState
+from app.providers.base import ProviderScenario
 from app.services.state_machine import record_initial_state_in_transaction
 
 
@@ -41,7 +42,10 @@ def _find_payment(
 
 
 def create_payment_intent(
-    session: Session, payload: PaymentIntentCreate
+    session: Session,
+    payload: PaymentIntentCreate,
+    scenario: ProviderScenario = ProviderScenario.SUCCESS,
+    provider_name: str = "provider_a",
 ) -> tuple[PaymentIntent, str, bool]:
     fingerprint = _request_fingerprint(payload)
     created = False
@@ -103,6 +107,8 @@ def create_payment_intent(
                     job_type="PROCESS_PAYMENT",
                     payment_id=payment_id,
                     dedupe_key=f"process-payment:{payment_id}",
+                    scenario=scenario.value,
+                    provider_name=provider_name,
                 )
             )
 

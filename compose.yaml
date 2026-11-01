@@ -21,6 +21,7 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://payment_app:payment_app_local_only@db:5432/payment_orchestrator}
       SIMULATION_ADMIN_TOKEN: ${SIMULATION_ADMIN_TOKEN:-}
+      PROVIDER_CALLBACK_SECRET: ${PROVIDER_CALLBACK_SECRET:-}
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
@@ -46,7 +47,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://payment_app:payment_app_local_only@db:5432/payment_orchestrator}
     command: python -m app.worker
     depends_on:
-      db:
+      api:
         condition: service_healthy
 
   web:

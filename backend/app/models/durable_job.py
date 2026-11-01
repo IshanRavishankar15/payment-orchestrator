@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Integer,
@@ -21,6 +22,32 @@ class DurableJob(Base):
     __table_args__ = (
         Index("ix_durable_jobs_status_available_at", "status", "available_at"),
         UniqueConstraint("dedupe_key", name="uq_durable_jobs_dedupe_key"),
+        CheckConstraint(
+            "status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'DEAD')",
+            name="valid_status",
+        ),
+        CheckConstraint(
+            "job_type IN ('PROCESS_PAYMENT', 'RECONCILE_PAYMENT')",
+            name="valid_job_type",
+        ),
+        CheckConstraint(
+            "scenario IN ('SUCCESS', 'DECLINE', 'TIMEOUT', "
+            "'SUCCESS_LOST_RESPONSE', 'TEMPORARY_UNAVAILABLE')",
+            name="valid_scenario",
+        ),
+        CheckConstraint(
+            "provider_name IN ('provider_a', 'provider_b')",
+            name="valid_provider_name",
+        ),
+        CheckConstraint(
+            "(status = 'PROCESSING' AND lease_owner IS NOT NULL "
+            "AND lease_expires_at IS NOT NULL) OR "
+            "(status <> 'PROCESSING' AND lease_owner IS NULL "
+            "AND lease_expires_at IS NULL)",
+            name="valid_lease",
+        ),
+        CheckConstraint("retry_count >= 0", name="nonnegative_retry_count"),
+        CheckConstraint("max_retries >= 0", name="nonnegative_max_retries"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -34,6 +61,12 @@ class DurableJob(Base):
     dedupe_key: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(
         String(16), default="PENDING", server_default="PENDING", nullable=False
+    )
+    provider_name: Mapped[str] = mapped_column(
+        String(80), default="provider_a", server_default="provider_a", nullable=False
+    )
+    scenario: Mapped[str] = mapped_column(
+        String(32), default="SUCCESS", server_default="SUCCESS", nullable=False
     )
     available_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

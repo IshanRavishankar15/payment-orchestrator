@@ -161,7 +161,7 @@ def test_unknown_payment_cannot_be_resolved_without_authoritative_evidence() -> 
     assert _payment_state(payment_id) == "UNKNOWN"
 
 
-def test_temporary_unavailability_is_classified_as_safe_preacceptance_failure() -> None:
+def test_temporary_unavailability_is_definitive_nonacceptance() -> None:
     payment_id = _create_payment()
 
     attempt = process_payment(
@@ -170,9 +170,9 @@ def test_temporary_unavailability_is_classified_as_safe_preacceptance_failure() 
         ProviderScenario.TEMPORARY_UNAVAILABLE,
     )
 
-    assert attempt.status == "RETRYABLE_FAILURE"
+    assert attempt.status == "NOT_ACCEPTED"
     assert attempt.error_code == "provider_temporarily_unavailable"
-    assert _payment_state(payment_id) == "PROCESSING"
+    assert _payment_state(payment_id) == "FAILED"
     result = get_provider_status(SessionLocal, attempt.id)
     assert result is not None
     assert result.outcome is ProviderOutcome.NOT_ACCEPTED

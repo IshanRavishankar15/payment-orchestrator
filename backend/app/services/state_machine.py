@@ -126,11 +126,14 @@ def transition_payment_in_transaction(
     if evidence is TransitionEvidence.PROVIDER_TIMEOUT and attempt.status != "UNKNOWN":
         raise InvalidStateTransition("The attempt does not record an uncertain outcome")
     if evidence is TransitionEvidence.PROVIDER_RESPONSE:
-        expected_attempt_status = {
-            PaymentState.SUCCEEDED: "SUCCEEDED",
-            PaymentState.FAILED: "DECLINED",
+        expected_attempt_statuses = {
+            PaymentState.SUCCEEDED: {"SUCCEEDED"},
+            PaymentState.FAILED: {"DECLINED", "NOT_ACCEPTED"},
         }.get(to_state)
-        if attempt.status != expected_attempt_status:
+        if (
+            expected_attempt_statuses is None
+            or attempt.status not in expected_attempt_statuses
+        ):
             raise InvalidStateTransition(
                 "The provider response does not match the attempt outcome"
             )
@@ -171,7 +174,41 @@ def transition_payment_in_transaction(
     if evidence is TransitionEvidence.CALLBACK:
         if provider_event_row_id is None:
             raise InvalidStateTransition("Callback transitions require a provider event")
-        if session.get(ProviderEvent, provider_event_row_id) is None:
+        event = session.get(ProviderEvent, provider_event_row_id)
+        expected_event_type = {
+            PaymentState.SUCCEEDED: "PAYMENT_SUCCEEDED",
+            PaymentState.FAILED: "PAYMENT_DECLINED",
+        }.get(to_state)
+        provider_transaction = session.scalar(
+            select(ProviderSimulationTransaction).where(
+                ProviderSimulationTransaction.provider_id == attempt.provider_id,
+                ProviderSimulationTransaction.provider_reference
+                == attempt.provider_reference,
+            )
+        )
+        expected_outcome = {
+            PaymentState.SUCCEEDED: ("SUCCEEDED", True),
+            PaymentState.FAILED: ("DECLINED", True),
+        }.get(to_state)
+        expected_attempt_status = {
+            PaymentState.SUCCEEDED: "SUCCEEDED",
+            PaymentState.FAILED: "DECLINED",
+        }.get(to_state)
+        if (
+            event is None
+            or not event.signature_valid
+            or event.provider_id != attempt.provider_id
+            or event.event_type != expected_event_type
+            or event.payload.get("provider_reference") != attempt.provider_reference
+            or expected_outcome is None
+            or provider_transaction is None
+            or (
+                provider_transaction.outcome,
+                provider_transaction.accepted,
+            )
+            != expected_outcome
+            or attempt.status != expected_attempt_status
+        ):
             raise InvalidStateTransition("Provider event does not exist")
     elif provider_event_row_id is not None:
         raise InvalidStateTransition(
