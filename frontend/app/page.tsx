@@ -170,7 +170,7 @@ export default async function Home({
             P
           </span>
           <span>
-            <strong>Flowstate</strong>
+            <strong>Payment Orchestrator</strong>
             <small>PAYMENT OPS</small>
           </span>
         </Link>
@@ -217,7 +217,10 @@ export default async function Home({
           </div>
         </div>
 
-        <section className="metrics-grid" aria-label="Payment state counts">
+        <section
+          className="metrics-grid"
+          aria-label="Payment state counts on the current page"
+        >
           <article className="metric-card">
             <span className="metric-label">Visible payments</span>
             <strong>{items.length}</strong>
@@ -226,22 +229,22 @@ export default async function Home({
           <article className="metric-card metric-created">
             <span className="metric-label">Queued</span>
             <strong>{stateCounts.CREATED}</strong>
-            <small>Awaiting execution</small>
+            <small>On this filtered page</small>
           </article>
           <article className="metric-card metric-processing">
             <span className="metric-label">Processing</span>
             <strong>{stateCounts.PROCESSING}</strong>
-            <small>Provider decision pending</small>
+            <small>On this filtered page</small>
           </article>
           <article className="metric-card metric-success">
             <span className="metric-label">Succeeded</span>
             <strong>{stateCounts.SUCCEEDED}</strong>
-            <small>Confirmed outcomes</small>
+            <small>On this filtered page</small>
           </article>
           <article className="metric-card metric-attention">
             <span className="metric-label">Needs attention</span>
             <strong>{stateCounts.UNKNOWN + stateCounts.FAILED}</strong>
-            <small>Unknown or failed</small>
+            <small>On this filtered page</small>
           </article>
         </section>
 

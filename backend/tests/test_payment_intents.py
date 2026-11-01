@@ -123,6 +123,43 @@ def test_concurrent_duplicate_requests_create_one_payment_and_job() -> None:
     assert job_count == 1
 
 
+def test_concurrent_payload_mismatch_creates_only_the_winning_request() -> None:
+    payload = _new_payload()
+    conflicting_payload = {**payload, "amount_minor": payload["amount_minor"] + 1}
+    requests = [payload, conflicting_payload] * 4
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(executor.map(_create_payment, requests))
+
+    successful_results = [
+        body for status, body in results if status in (200, 201)
+    ]
+    conflicts = [body for status, body in results if status == 409]
+    assert 201 in [status for status, _ in results]
+    assert len(successful_results) == 4
+    assert len(conflicts) == 4
+    assert len({body["id"] for body in successful_results}) == 1
+    assert all(
+        body["detail"]["code"] == "idempotency_key_payload_mismatch"
+        for body in conflicts
+    )
+
+    payment_id = uuid.UUID(successful_results[0]["id"])
+    with SessionLocal() as session:
+        payment_count = session.scalar(
+            select(func.count())
+            .select_from(PaymentIntent)
+            .where(PaymentIntent.id == payment_id)
+        )
+        job_count = session.scalar(
+            select(func.count())
+            .select_from(DurableJob)
+            .where(DurableJob.payment_id == payment_id)
+        )
+    assert payment_count == 1
+    assert job_count == 1
+
+
 def test_get_and_list_payment_intents() -> None:
     payload = _new_payload()
     status_code, created = _create_payment(payload)

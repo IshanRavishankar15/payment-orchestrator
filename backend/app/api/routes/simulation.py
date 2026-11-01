@@ -104,7 +104,11 @@ async def receive_provider_callback(
     request: Request,
     signature: str | None = Header(default=None, alias="X-Provider-Signature"),
 ) -> dict[str, str]:
-    secret = get_settings().provider_callback_secret
+    settings = get_settings()
+    secret = {
+        "provider_a": settings.provider_a_callback_secret,
+        "provider_b": settings.provider_b_callback_secret,
+    }.get(provider_name)
     if not secret:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

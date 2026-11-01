@@ -266,3 +266,38 @@ def test_state_transition_requires_attempt_belonging_to_payment() -> None:
             )
 
     assert _payment_state(payment_id) == "CREATED"
+
+
+def test_current_payment_states_match_contiguous_transition_histories() -> None:
+    with SessionLocal() as session:
+        has_payments = session.scalar(select(PaymentIntent.id).limit(1)) is not None
+    if not has_payments:
+        payment_id = _create_payment()
+        process_payment(SessionLocal, payment_id)
+
+    with SessionLocal() as session:
+        payments = {
+            payment.id: payment
+            for payment in session.scalars(select(PaymentIntent)).all()
+        }
+        transitions = session.scalars(
+            select(StateTransition).order_by(
+                StateTransition.payment_id,
+                StateTransition.occurred_at,
+                StateTransition.id,
+            )
+        ).all()
+
+    history_by_payment: dict[uuid.UUID, list[StateTransition]] = {}
+    for transition in transitions:
+        history_by_payment.setdefault(transition.payment_id, []).append(transition)
+
+    assert payments
+    assert history_by_payment.keys() == payments.keys()
+    for payment_id, payment in payments.items():
+        history = history_by_payment[payment_id]
+        assert history[0].from_state is None
+        assert history[0].to_state == PaymentState.CREATED.value
+        for previous, current in zip(history, history[1:]):
+            assert current.from_state == previous.to_state
+        assert history[-1].to_state == payment.current_state
